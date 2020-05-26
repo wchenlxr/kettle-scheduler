@@ -246,39 +246,45 @@ public class JobService {
      * @Description 启动作业
      */
     public void start(Integer jobId) {
-        // 获取到作业对象
-        KJob kJob = kJobDao.unique(jobId);
-        // 获取到定时策略对象
-        KQuartz kQuartz = kQuartzDao.unique(kJob.getJobQuartz());
-        // 定时策略
-        String quartzCron = kQuartz.getQuartzCron();
-        // 用户ID
-        Integer userId = kJob.getAddUser();
-        // 获取调度任务的基础信息
-        Map<String, String> quartzBasic = getQuartzBasic(kJob);
-        // Quartz执行时的参数
-        Map<String, Object> quartzParameter = getQuartzParameter(kJob);
-        Date nextExecuteTime = null;
-        try {
-            // 判断作业执行类型
-            if (new Integer(1).equals(kJob.getJobQuartz())) {//如果是只执行一次
-                nextExecuteTime = QuartzManager.addOnceJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"), JobQuartz.class, quartzParameter);
-            } else {// 如果是按照策略执行
-                //添加任务
-                nextExecuteTime = QuartzManager.addJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
-                        JobQuartz.class, quartzCron, quartzParameter);
+        String jobs = String.valueOf("job" + jobId).intern();
+        synchronized (jobs) {
+            // 获取到作业对象
+            KJob kJob = kJobDao.unique(jobId);
+            if (kJob.getJobStatus() == 1) {
+                throw new RuntimeException("任务已启动,请勿重复操作");
             }
-        } catch (Exception e) {
-            kJob.setJobStatus(2);
+            // 获取到定时策略对象
+            KQuartz kQuartz = kQuartzDao.unique(kJob.getJobQuartz());
+            // 定时策略
+            String quartzCron = kQuartz.getQuartzCron();
+            // 用户ID
+            Integer userId = kJob.getAddUser();
+            // 获取调度任务的基础信息
+            Map<String, String> quartzBasic = getQuartzBasic(kJob);
+            // Quartz执行时的参数
+            Map<String, Object> quartzParameter = getQuartzParameter(kJob);
+            Date nextExecuteTime = null;
+            try {
+                // 判断作业执行类型
+                if (new Integer(1).equals(kJob.getJobQuartz())) {//如果是只执行一次
+                    nextExecuteTime = QuartzManager.addOnceJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                            quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"), JobQuartz.class, quartzParameter);
+                } else {// 如果是按照策略执行
+                    //添加任务
+                    nextExecuteTime = QuartzManager.addJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                            quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
+                            JobQuartz.class, quartzCron, quartzParameter);
+                }
+            } catch (Exception e) {
+                kJob.setJobStatus(2);
+                kJobDao.updateTemplateById(kJob);
+                return;
+            }
+            // 添加监控
+            addMonitor(userId, jobId, nextExecuteTime);
+            kJob.setJobStatus(1);
             kJobDao.updateTemplateById(kJob);
-            return;
         }
-        // 添加监控
-        addMonitor(userId, jobId, nextExecuteTime);
-        kJob.setJobStatus(1);
-        kJobDao.updateTemplateById(kJob);
     }
 
     /**
@@ -289,30 +295,36 @@ public class JobService {
      * @Description 停止作业
      */
     public void stop(Integer jobId) {
-        // 获取到作业对象
-        KJob kJob = kJobDao.unique(jobId);
-        // 用户ID
-        Integer userId = kJob.getAddUser();
-        // 获取调度任务的基础信息
-        Map<String, String> quartzBasic = getQuartzBasic(kJob);
-        if (new Integer(1).equals(kJob.getJobQuartz())) {//如果是只执行一次
-            // 一次性执行任务，不允许手动停止
-            QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                    quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
-        } else {// 如果是按照策略执行
-            //移除任务
-            QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                    quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
+        String jobs = String.valueOf("job" + jobId).intern();
+        synchronized (jobs) {
+            // 获取到作业对象
+            KJob kJob = kJobDao.unique(jobId);
+            if (kJob.getJobStatus() == 2) {
+                throw new RuntimeException("作业已停止,请勿重复操作");
+            }
+            // 用户ID
+            Integer userId = kJob.getAddUser();
+            // 获取调度任务的基础信息
+            Map<String, String> quartzBasic = getQuartzBasic(kJob);
+            if (new Integer(1).equals(kJob.getJobQuartz())) {//如果是只执行一次
+                // 一次性执行任务，不允许手动停止
+                QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
+            } else {// 如果是按照策略执行
+                //移除任务
+                QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
+            }
+            // 移除监控
+            removeMonitor(userId, jobId);
+            kJob.setJobStatus(2);
+            kJobDao.updateTemplateById(kJob);
         }
-        // 移除监控
-        removeMonitor(userId, jobId);
-        kJob.setJobStatus(2);
-        kJobDao.updateTemplateById(kJob);
     }
 
     /**
      * @param kJob 转换对象
-     * @return Map<String                               ,                                                               String> 任务调度的基础信息
+     * @return Map<String                                                                                                                               ,                                                                                                                                                                                                                                                               String> 任务调度的基础信息
      * @Title getQuartzBasic
      * @Description 获取任务调度的基础信息
      */
@@ -345,7 +357,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String                               ,                                                               Object>
+     * @return Map<String                                                                                                                               ,                                                                                                                                                                                                                                                               Object>
      * @Title getQuartzParameter
      * @Description 获取任务调度的参数
      */
@@ -473,7 +485,7 @@ public class JobService {
         }
     }
 
-    public Long getStartTaskCount(Integer categoryId, String jobName,Integer uId) {
+    public Long getStartTaskCount(Integer categoryId, String jobName, Integer uId) {
         KJob template = new KJob();
         template.setAddUser(uId);
         template.setDelFlag(1);
@@ -488,7 +500,7 @@ public class JobService {
         return startTaskCount;
     }
 
-    public Long getStopTaskCount(Integer categoryId, String jobName,Integer uId) {
+    public Long getStopTaskCount(Integer categoryId, String jobName, Integer uId) {
         KJob template = new KJob();
         template.setAddUser(uId);
         template.setDelFlag(1);
@@ -502,7 +514,8 @@ public class JobService {
         Long stopTaskCount = kJobDao.allCount(template);
         return stopTaskCount;
     }
-    public String getJobRunState(Integer jobId){
+
+    public String getJobRunState(Integer jobId) {
         // 获取到作业对象
         KJob kJob = kJobDao.unique(jobId);
         // 获取调度任务的基础信息
