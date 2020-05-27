@@ -8,7 +8,7 @@
 	<base href="<%=basePath %>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="renderer" content="webkit">
-    <title>登录 | Kettle调度监控平台</title>
+    <title>登录 | 中医数据采集调度监控平台</title>
     <link rel="shortcut icon" href="static/img/favicon.ico">
   	<link href="static/css/bootstrap.min.css?v=3.3.6" rel="stylesheet">
     <link href="static/css/font-awesome.min.css?v=4.4.0" rel="stylesheet">
@@ -24,7 +24,7 @@ if(window != window.parent){
 </script>
 <body class="login">
 <div class="logo">
-    <a href="javascript:void(0)"><span style="font-size: 24px;color: white;">Kettle调度监控平台</span></a>
+    <a href="javascript:void(0)"><span style="font-size: 24px;color: white;">中医数据采集调度监控平台</span></a>
 </div>
 <div class="content">
     <form id="loginForm" name="loginForm" class="login-form" action="index/login.shtml" method="POST" novalidate>

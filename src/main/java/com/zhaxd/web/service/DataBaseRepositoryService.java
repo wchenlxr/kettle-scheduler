@@ -7,6 +7,7 @@ import java.util.List;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.repository.kdr.KettleDatabaseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.zhaxd.common.kettle.repository.RepositoryUtil;
@@ -35,6 +36,7 @@ public class DataBaseRepositoryService {
 	 * @throws KettleException
 	 * @return List<RepositoryTree>
 	 */
+	@Cacheable("sysCache")
 	public List<RepositoryTree> getTreeList(Integer repositoryId) throws KettleException{
 		KettleDatabaseRepository kettleDatabaseRepository = null;
 		List<RepositoryTree> allRepositoryTreeList = new ArrayList<RepositoryTree>();

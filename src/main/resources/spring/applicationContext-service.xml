@@ -1,13 +1,30 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:context="http://www.springframework.org/schema/context"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:cache="http://www.springframework.org/schema/cache"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
 						http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
 						http://www.springframework.org/schema/context 
-						http://www.springframework.org/schema/context/spring-context-4.3.xsd">
-	
-	<!-- 扫描包加载service实现类 -->
-	<context:component-scan base-package="com.zhaxd.web.service"/>
-	<!-- kettle的环境初始化 -->
-	<bean id="KettleEnvironmentInit" class="com.zhaxd.common.kettle.environment.StartInit"></bean>
+						http://www.springframework.org/schema/context/spring-context-4.3.xsd
+       http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.3.xsd">
+
+    <!-- 扫描包加载service实现类 -->
+    <context:component-scan base-package="com.zhaxd.web.service"/>
+    <!-- kettle的环境初始化 -->
+    <bean id="KettleEnvironmentInit" class="com.zhaxd.common.kettle.environment.StartInit"></bean>
+
+
+    <cache:annotation-driven/>
+
+    <bean id="ehCacheManager" class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+        <property name="configLocation">
+            <value>classpath:/spring/ehcache-setting.xml</value>
+        </property>
+    </bean>
+
+    <!-- 配置基于EhCache的缓存管理器，并将EhCache的CacheManager注入该缓存管理器Bean中 -->
+    <bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager">
+        <property name="cacheManager" ref="ehCacheManager"/>
+    </bean>
+
 </beans>

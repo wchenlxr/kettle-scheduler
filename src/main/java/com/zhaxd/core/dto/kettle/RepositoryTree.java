@@ -1,6 +1,10 @@
 package com.zhaxd.core.dto.kettle;
 
-public class RepositoryTree {
+import java.io.Serializable;
+
+public class RepositoryTree implements Serializable {
+
+	private static final long serialVersionUID = 1098539871246444544L;
 
 	private String id;
 	private String parent;
