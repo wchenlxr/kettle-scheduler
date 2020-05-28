@@ -7,7 +7,7 @@ public class KJobRecord {
 	private Integer recordId ;
 	//作业ID
 	private Integer recordJob ;
-	//任务执行结果（1：成功；2：失败）
+	//任务执行结果（1：成功；2：失败;0执行中）
 	private Integer recordStatus ;
 	//添加人
 	private Integer addUser;

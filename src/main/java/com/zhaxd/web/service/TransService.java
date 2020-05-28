@@ -7,28 +7,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zhaxd.core.mapper.*;
+import com.zhaxd.core.model.*;
 import org.apache.commons.lang.StringUtils;
 import org.beetl.sql.core.DSTransactionManager;
 import org.beetl.sql.core.db.KeyHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.dto.BootTablePage;
-import com.zhaxd.core.mapper.KQuartzDao;
-import com.zhaxd.core.mapper.KRepositoryDao;
-import com.zhaxd.core.mapper.KTransDao;
-import com.zhaxd.core.mapper.KTransMonitorDao;
-import com.zhaxd.core.model.KQuartz;
-import com.zhaxd.core.model.KRepository;
-import com.zhaxd.core.model.KTrans;
-import com.zhaxd.core.model.KTransMonitor;
 import com.zhaxd.web.quartz.QuartzManager;
 import com.zhaxd.web.quartz.TransQuartz;
 import com.zhaxd.web.quartz.model.DBConnectionModel;
 import com.zhaxd.web.utils.CommonUtils;
+
+import javax.annotation.PostConstruct;
 
 @Service
 public class TransService {
@@ -44,6 +41,9 @@ public class TransService {
 
     @Autowired
     private KTransMonitorDao kTransMonitorDao;
+
+    @Autowired
+    private KTransRecordDao kTransRecordDao;
 
     @Value("${kettle.log.file.path}")
     private String kettleLogFilePath;
@@ -235,13 +235,26 @@ public class TransService {
         kTransDao.updateTemplateById(kTrans);
     }
 
+    @PostConstruct
+    public void scanJob() {
+        KTrans kTrans = new KTrans();
+        kTrans.setTransStatus(1);
+        List<KTrans> kTransList = kTransDao.queryByCondition(kTrans);
+        kTransList.stream().map(trans -> trans.getTransId()).forEach(transId -> {
+            KTransRecord kTransRecord = kTransRecordDao.selectLastTrans(transId);
+            if (0==kTransRecord.getRecordStatus())
+                kTransRecordDao.deleteById(kTransRecord.getRecordId());
+            scanStart(transId);
+        });
+    }
+
     /**
      * @param transId 转换ID
      * @return void
      * @Title start
      * @Description 启动转换
      */
-    public void start(Integer transId) {
+    public void scanStart(Integer transId) {
         // 获取到转换对象
         KTrans kTrans = kTransDao.unique(transId);
         // 获取到定时策略对象
@@ -258,16 +271,10 @@ public class TransService {
         // 添加任务
         // 判断转换执行类型
         try {
-            if (new Integer(1).equals(kTrans.getTransQuartz())) {//如果是只执行一次
-                nextExecuteTime = QuartzManager.addOnceJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
-                        TransQuartz.class, quartzParameter);
-            } else {// 如果是按照策略执行
-                //添加任务
-                nextExecuteTime = QuartzManager.addJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
-                        TransQuartz.class, quartzCron, quartzParameter);
-            }
+            //添加任务
+            nextExecuteTime = QuartzManager.addJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                    quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
+                    TransQuartz.class, quartzCron, quartzParameter);
         } catch (Exception e) {
             kTrans.setTransStatus(2);
             kTransDao.updateTemplateById(kTrans);
@@ -282,35 +289,85 @@ public class TransService {
     /**
      * @param transId 转换ID
      * @return void
+     * @Title start
+     * @Description 启动转换
+     */
+    public void start(Integer transId) {
+        String trans = String.valueOf("trans" + transId).intern();
+        synchronized (trans) {
+            // 获取到转换对象
+            KTrans kTrans = kTransDao.unique(transId);
+            // 获取到定时策略对象
+            KQuartz kQuartz = kQuartzDao.unique(kTrans.getTransQuartz());
+            // 定时策略
+            String quartzCron = kQuartz.getQuartzCron();
+            // 用户ID
+            Integer userId = kTrans.getAddUser();
+            // 获取Quartz执行的基础信息
+            Map<String, String> quartzBasic = getQuartzBasic(kTrans);
+            // 获取Quartz的参数
+            Map<String, Object> quartzParameter = getQuartzParameter(kTrans);
+            Date nextExecuteTime = null;
+            // 添加任务
+            // 判断转换执行类型
+            try {
+                if (new Integer(1).equals(kTrans.getTransQuartz())) {//如果是只执行一次
+                    nextExecuteTime = QuartzManager.addOnceJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                            quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
+                            TransQuartz.class, quartzParameter);
+                } else {// 如果是按照策略执行
+                    //添加任务
+                    nextExecuteTime = QuartzManager.addJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                            quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
+                            TransQuartz.class, quartzCron, quartzParameter);
+                }
+            } catch (Exception e) {
+                kTrans.setTransStatus(2);
+                kTransDao.updateTemplateById(kTrans);
+                return;
+            }
+            // 添加监控
+            addMonitor(userId, transId, nextExecuteTime);
+            kTrans.setTransStatus(1);
+            kTransDao.updateTemplateById(kTrans);
+        }
+    }
+
+    /**
+     * @param transId 转换ID
+     * @return void
      * @Title stop
      * @Description 停止转换
      */
     public void stop(Integer transId) {
-        // 获取到作业对象
-        KTrans kTrans = kTransDao.unique(transId);
-        // 用户ID
-        Integer userId = kTrans.getAddUser();
-        // 获取Quartz执行的基础信息
-        Map<String, String> quartzBasic = getQuartzBasic(kTrans);
-        // 移除任务
-        if (new Integer(1).equals(kTrans.getTransQuartz())) {//如果是只执行一次
-            // 一次性执行任务，不允许手动停止
-            QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                    quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
-        } else {// 如果是按照策略执行
-            QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
-                    quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
+        String trans = String.valueOf("trans" + transId).intern();
+        synchronized (trans) {
+            // 获取到作业对象
+            KTrans kTrans = kTransDao.unique(transId);
+            // 用户ID
+            Integer userId = kTrans.getAddUser();
+            // 获取Quartz执行的基础信息
+            Map<String, String> quartzBasic = getQuartzBasic(kTrans);
+            // 移除任务
+            if (new Integer(1).equals(kTrans.getTransQuartz())) {//如果是只执行一次
+                // 一次性执行任务，不允许手动停止
+                QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
+            } else {// 如果是按照策略执行
+                QuartzManager.removeJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                        quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"));
+            }
+            // 移除监控
+            removeMonitor(userId, transId);
+            // 更新任务状态
+            kTrans.setTransStatus(2);
+            kTransDao.updateTemplateById(kTrans);
         }
-        // 移除监控
-        removeMonitor(userId, transId);
-        // 更新任务状态
-        kTrans.setTransStatus(2);
-        kTransDao.updateTemplateById(kTrans);
     }
 
     /**
      * @param kTrans 转换对象
-     * @return Map<String               ,                               String> 任务调度的基础信息
+     * @return Map<String                                                                                                                                                                                                                                                               ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               String> 任务调度的基础信息
      * @Title getQuartzBasic
      * @Description 获取任务调度的基础信息
      */
@@ -343,7 +400,7 @@ public class TransService {
 
     /**
      * @param kTrans 转换对象
-     * @return Map<String               ,                               Object>
+     * @return Map<String                                                                                                                                                                                                                                                               ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Object>
      * @Title getQuartzParameter
      * @Description 获取任务调度的参数
      */
@@ -499,7 +556,8 @@ public class TransService {
         Long stopTaskCount = kTransDao.allCount(template);
         return stopTaskCount;
     }
-    public String getTransRunState(Integer transId){
+
+    public String getTransRunState(Integer transId) {
         // 获取到作业对象
         KTrans kTrans = kTransDao.unique(transId);
         // 获取Quartz执行的基础信息

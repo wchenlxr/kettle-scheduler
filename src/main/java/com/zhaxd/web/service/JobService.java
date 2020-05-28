@@ -1,35 +1,30 @@
 package com.zhaxd.web.service;
 
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.zhaxd.common.exception.SeviceException;
+import com.zhaxd.common.toolkit.Constant;
+import com.zhaxd.core.dto.BootTablePage;
+import com.zhaxd.core.mapper.*;
+import com.zhaxd.core.model.*;
+import com.zhaxd.web.quartz.JobQuartz;
+import com.zhaxd.web.quartz.QuartzManager;
+import com.zhaxd.web.quartz.model.DBConnectionModel;
+import com.zhaxd.web.utils.CommonUtils;
 import org.apache.commons.lang.StringUtils;
 import org.beetl.sql.core.DSTransactionManager;
+import org.beetl.sql.core.SQLManager;
 import org.beetl.sql.core.db.KeyHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.zhaxd.common.exception.SeviceException;
-import com.zhaxd.common.toolkit.Constant;
-import com.zhaxd.core.dto.BootTablePage;
-import com.zhaxd.core.mapper.KJobDao;
-import com.zhaxd.core.mapper.KJobMonitorDao;
-import com.zhaxd.core.mapper.KQuartzDao;
-import com.zhaxd.core.mapper.KRepositoryDao;
-import com.zhaxd.core.model.KJob;
-import com.zhaxd.core.model.KJobMonitor;
-import com.zhaxd.core.model.KQuartz;
-import com.zhaxd.core.model.KRepository;
-import com.zhaxd.web.quartz.JobQuartz;
-import com.zhaxd.web.quartz.QuartzManager;
-import com.zhaxd.web.quartz.model.DBConnectionModel;
-import com.zhaxd.web.utils.CommonUtils;
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class JobService {
@@ -46,6 +41,9 @@ public class JobService {
 
     @Autowired
     private KJobMonitorDao kJobMonitorDao;
+
+    @Autowired
+    private KJobRecordDao kJobRecordDao;
 
     @Value("${kettle.log.file.path}")
     private String kettleLogFilePath;
@@ -237,6 +235,55 @@ public class JobService {
         kJobDao.updateTemplateById(kJob);
     }
 
+    @PostConstruct
+    public void scanJob() {
+        KJob kJob = new KJob();
+        kJob.setJobStatus(1);
+        List<KJob> kJobs = kJobDao.queryByCondition(kJob);
+        kJobs.stream().map(job -> job.getJobId()).forEach(jobid -> {
+            KJobRecord kJobRecord = kJobRecordDao.selectLastJob(jobid);
+            if (0 == kJobRecord.getRecordStatus())
+                kJobRecordDao.deleteById(kJobRecord.getRecordId());
+            scanStart(jobid);
+        });
+    }
+
+    /**
+     * @param jobId 作业ID
+     * @return void
+     * @throws SeviceException
+     * @Title start
+     * @Description 启动作业
+     */
+    public void scanStart(Integer jobId) {
+        // 获取到作业对象
+        KJob kJob = kJobDao.unique(jobId);
+        // 获取到定时策略对象
+        KQuartz kQuartz = kQuartzDao.unique(kJob.getJobQuartz());
+        // 定时策略
+        String quartzCron = kQuartz.getQuartzCron();
+        // 用户ID
+        Integer userId = kJob.getAddUser();
+        // 获取调度任务的基础信息
+        Map<String, String> quartzBasic = getQuartzBasic(kJob);
+        // Quartz执行时的参数
+        Map<String, Object> quartzParameter = getQuartzParameter(kJob);
+        Date nextExecuteTime = null;
+        try {
+            //添加任务
+            nextExecuteTime = QuartzManager.addJob(quartzBasic.get("jobName"), quartzBasic.get("jobGroupName"),
+                    quartzBasic.get("triggerName"), quartzBasic.get("triggerGroupName"),
+                    JobQuartz.class, quartzCron, quartzParameter);
+        } catch (Exception e) {
+            kJob.setJobStatus(2);
+            kJobDao.updateTemplateById(kJob);
+            return;
+        }
+        // 添加监控
+        addMonitor(userId, jobId, nextExecuteTime);
+        kJob.setJobStatus(1);
+        kJobDao.updateTemplateById(kJob);
+    }
 
     /**
      * @param jobId 作业ID
@@ -324,7 +371,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String                                                                                                                               ,                                                                                                                                                                                                                                                               String> 任务调度的基础信息
+     * @return Map<String               ,               String> 任务调度的基础信息
      * @Title getQuartzBasic
      * @Description 获取任务调度的基础信息
      */
@@ -357,7 +404,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String                                                                                                                               ,                                                                                                                                                                                                                                                               Object>
+     * @return Map<String               ,               Object>
      * @Title getQuartzParameter
      * @Description 获取任务调度的参数
      */

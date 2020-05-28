@@ -14,11 +14,10 @@
     <bean id="KettleEnvironmentInit" class="com.zhaxd.common.kettle.environment.StartInit"></bean>
 
 
-    <cache:annotation-driven/>
+    <cache:annotation-driven cache-manager="cacheManager"/>
 
     <bean id="ehCacheManager" class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
-        <property name="configLocation">
-            <value>classpath:/spring/ehcache-setting.xml</value>
+        <property name="configLocation" value="classpath:/spring/ehcache-setting.xml">
         </property>
     </bean>
 

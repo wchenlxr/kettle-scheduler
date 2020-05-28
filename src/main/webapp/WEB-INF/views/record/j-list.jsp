@@ -132,15 +132,25 @@
             return "运行成功";
         } else if (value == "2") {
             return "运行失败";
+        } else if (value == "0") {
+            return "执行中";
         } else {
             return "未定义";
         }
     };
 
     function actionFormatter(value, row, index) {
-        return ['<a class="btn btn-primary btn-xs" id="view" type="button"><i class="fa fa-eye" aria-hidden="true"></i>&nbsp;查看</a>',
-            '&nbsp;&nbsp;',
-            '<a class="btn btn-primary btn-xs" id="download" type="button"><i class="fa fa-download" aria-hidden="true"></i>&nbsp;下载</a>'].join('');
+        if (0==row.recordStatus) {
+            return ['<a class="btn btn-primary btn-xs" type="button" disabled><i class="fa fa-eye" aria-hidden="true"></i>&nbsp;查看</a>',
+                '&nbsp;&nbsp;',
+                '<a class="btn btn-primary btn-xs" type="button" disabled><i class="fa fa-download" aria-hidden="true"></i>&nbsp;下载</a>'
+            ].join('');
+        }else{
+            return ['<a class="btn btn-primary btn-xs" id="view" type="button" ><i class="fa fa-eye" aria-hidden="true"></i>&nbsp;查看</a>',
+                '&nbsp;&nbsp;',
+                '<a class="btn btn-primary btn-xs" id="download" type="button" ><i class="fa fa-download" aria-hidden="true"></i>&nbsp;下载</a>'
+            ].join('');
+        }
     };
     window.actionEvents = {
         'click #view': function (e, value, row, index) {

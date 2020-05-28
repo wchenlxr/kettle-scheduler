@@ -16,45 +16,44 @@ import com.zhaxd.core.model.KTransRecord;
 @Service
 public class TransRecordService {
 
-	@Autowired
-	private KTransRecordDao kTransRecordDao;
-	
-	/**
-	 * @Title getList
-	 * @Description 获取列表
-	 * @param start 其实行数
-	 * @param size 结束行数
-	 * @param uId 用户ID
-	 * @param transId 转换ID
-	 * @return
-	 * @return BootTablePage
-	 */
-	public BootTablePage getList(Integer start, Integer size, Integer uId, Integer transId){
-		KTransRecord template = new KTransRecord();
-		template.setAddUser(uId);
-		if (transId != null){
-			template.setRecordTrans(transId);
-		}
-		List<KTransRecord> kTransRecordList = kTransRecordDao.template(template, start, size);
-		long totalCount = kTransRecordDao.templateCount(template);
-		BootTablePage bootTablePage = new BootTablePage();
-		bootTablePage.setRows(kTransRecordList);
-		bootTablePage.setTotal(totalCount);
-		return bootTablePage;
-	}
-	
-	/**
-	 * @Title getLogContent
-	 * @Description 转换日志内容
-	 * @param recordId 转换记录ID
-	 * @return
-	 * @throws IOException
-	 * @return String
-	 */
-	public String getLogContent(Integer recordId) throws IOException{
-		KTransRecord kTransRecord = kTransRecordDao.unique(recordId);
-		String logFilePath = kTransRecord.getLogFilePath();
-		return FileUtils.readFileToString(new File(logFilePath), Constant.DEFAULT_ENCODING);
-	}
-	
+    @Autowired
+    private KTransRecordDao kTransRecordDao;
+
+    /**
+     * @param start   其实行数
+     * @param size    结束行数
+     * @param uId     用户ID
+     * @param transId 转换ID
+     * @return BootTablePage
+     * @Title getList
+     * @Description 获取列表
+     */
+    public BootTablePage getList(Integer start, Integer size, Integer uId, Integer transId) {
+        KTransRecord template = new KTransRecord();
+        template.setAddUser(uId);
+        if (transId != null) {
+            template.setRecordTrans(transId);
+        }
+        List<KTransRecord> kTransRecordList = kTransRecordDao.template(template, start, size);
+        long totalCount = kTransRecordDao.templateCount(template);
+        BootTablePage bootTablePage = new BootTablePage();
+        bootTablePage.setRows(kTransRecordList);
+        bootTablePage.setTotal(totalCount);
+        return bootTablePage;
+    }
+
+    /**
+     * @param recordId 转换记录ID
+     * @return String
+     * @throws IOException
+     * @Title getLogContent
+     * @Description 转换日志内容
+     */
+    public String getLogContent(Integer recordId) throws IOException {
+        KTransRecord kTransRecord = kTransRecordDao.unique(recordId);
+        String logFilePath = kTransRecord.getLogFilePath();
+        if (null == logFilePath) return "";
+        return FileUtils.readFileToString(new File(logFilePath), Constant.DEFAULT_ENCODING);
+    }
+
 }

@@ -16,44 +16,42 @@ import com.zhaxd.core.model.KJobRecord;
 @Service
 public class JobRecordService {
 
-	@Autowired
-	private KJobRecordDao kJobRecordDao;
-	
-	/**
-	 * @Title getList
-	 * @Description 获取带分页的列表
-	 * @param start 起始行数
-	 * @param size 每页行数
-	 * @param uId 用户ID
-	 * @param jobId 作业ID
-	 * @return
-	 * @return BootTablePage
-	 */
-	public BootTablePage getList(Integer start, Integer size, Integer uId, Integer jobId){
-		KJobRecord template = new KJobRecord();
-		template.setAddUser(uId);
-		if (jobId != null){
-			template.setRecordJob(jobId);
-		}
-		List<KJobRecord> kJobRecordList = kJobRecordDao.template(template, start, size);
-		long totalCount = kJobRecordDao.templateCount(template);
-		BootTablePage bootTablePage = new BootTablePage();
-		bootTablePage.setRows(kJobRecordList);
-		bootTablePage.setTotal(totalCount);
-		return bootTablePage;
-	}
-	
-	/**
-	 * @Title getLogContent
-	 * @Description 转换日志内容
-	 * @param recordId 转换记录ID
-	 * @return
-	 * @throws IOException
-	 * @return String
-	 */
-	public String getLogContent(Integer jobId) throws IOException{
-		KJobRecord kJobRecord = kJobRecordDao.unique(jobId);
-		String logFilePath = kJobRecord.getLogFilePath();
-		return FileUtils.readFileToString(new File(logFilePath), Constant.DEFAULT_ENCODING);
-	}
+    @Autowired
+    private KJobRecordDao kJobRecordDao;
+
+    /**
+     * @param start 起始行数
+     * @param size  每页行数
+     * @param uId   用户ID
+     * @param jobId 作业ID
+     * @return BootTablePage
+     * @Title getList
+     * @Description 获取带分页的列表
+     */
+    public BootTablePage getList(Integer start, Integer size, Integer uId, Integer jobId) {
+        KJobRecord template = new KJobRecord();
+        template.setAddUser(uId);
+        if (jobId != null) {
+            template.setRecordJob(jobId);
+        }
+        List<KJobRecord> kJobRecordList = kJobRecordDao.template(template, start, size);
+        long totalCount = kJobRecordDao.templateCount(template);
+        BootTablePage bootTablePage = new BootTablePage();
+        bootTablePage.setRows(kJobRecordList);
+        bootTablePage.setTotal(totalCount);
+        return bootTablePage;
+    }
+
+    /**
+     * @return String
+     * @throws IOException
+     * @Title getLogContent
+     * @Description 转换日志内容
+     */
+    public String getLogContent(Integer jobId) throws IOException {
+        KJobRecord kJobRecord = kJobRecordDao.unique(jobId);
+        String logFilePath = kJobRecord.getLogFilePath();
+        if (null == logFilePath) return "";
+        return FileUtils.readFileToString(new File(logFilePath), Constant.DEFAULT_ENCODING);
+    }
 }

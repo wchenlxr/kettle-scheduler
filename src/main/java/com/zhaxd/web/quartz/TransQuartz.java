@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Date;
 
+import com.zhaxd.core.model.KJobRecord;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.beetl.sql.core.ClasspathLoader;
@@ -16,6 +17,7 @@ import org.beetl.sql.core.SQLLoader;
 import org.beetl.sql.core.SQLManager;
 import org.beetl.sql.core.UnderlinedNameConversion;
 import org.beetl.sql.core.db.DBStyle;
+import org.beetl.sql.core.db.KeyHolder;
 import org.beetl.sql.core.db.MySqlStyle;
 import org.beetl.sql.ext.DebugInterceptor;
 import org.pentaho.di.core.ProgressNullMonitorListener;
@@ -113,8 +115,16 @@ public class TransQuartz implements InterruptableJob {
 //            Date transStartDate = null;
             Date transStopDate = null;
             String logText = null;
+            int key = -1;
             try {
 //                transStartDate = new Date();
+                KTransRecord kTransRecord = new KTransRecord();
+                kTransRecord.setRecordTrans(Integer.parseInt(transId));
+                kTransRecord.setAddUser(Integer.parseInt(userId));
+                kTransRecord.setRecordStatus(recordStatus);
+                kTransRecord.setStartTime(executeTime);
+                kTransRecord.setStopTime(null);
+                key = writeToDBAndFileAtBegin(DbConnectionObject, kTransRecord, executeTime, nexExecuteTime);
                 trans.execute(null);
                 trans.waitUntilFinished();
                 transStopDate = new Date();
@@ -125,7 +135,7 @@ public class TransQuartz implements InterruptableJob {
                 if (trans.isFinished()) {
                     if (trans.getErrors() > 0) {
                         recordStatus = 2;
-                        if (null == trans.getResult().getLogText() || "".equals(trans.getResult().getLogText())){
+                        if (null == trans.getResult().getLogText() || "".equals(trans.getResult().getLogText())) {
                             logText = exception;
                         }
                     }
@@ -145,6 +155,8 @@ public class TransQuartz implements InterruptableJob {
                         kTransRecord.setRecordStatus(recordStatus);
                         kTransRecord.setStartTime(executeTime);
                         kTransRecord.setStopTime(transStopDate);
+                        if (key > -1)
+                            kTransRecord.setRecordId(key);
                         writeToDBAndFile(DbConnectionObject, kTransRecord, logText, executeTime, nexExecuteTime);
                     } catch (IOException | SQLException e) {
                         e.printStackTrace();
@@ -223,6 +235,41 @@ public class TransQuartz implements InterruptableJob {
     /**
      * @param DbConnectionObject 数据库连接对象
      * @param kTransRecord       转换运行记录对象
+     * @return void
+     * @throws IOException
+     * @throws SQLException
+     * @Title writeToDBAndFile
+     * @Description 保存转换运行日志信息到文件和数据库
+     */
+    private int writeToDBAndFileAtBegin(Object DbConnectionObject, KTransRecord kTransRecord, Date lastExecuteTime, Date nextExecuteTime)
+            throws IOException, SQLException {
+        // 写入转换运行记录到数据库
+        DBConnectionModel DBConnectionModel = (DBConnectionModel) DbConnectionObject;
+        ConnectionSource source = ConnectionSourceHelper.getSimple(DBConnectionModel.getConnectionDriveClassName(),
+                DBConnectionModel.getConnectionUrl(), DBConnectionModel.getConnectionUser(), DBConnectionModel.getConnectionPassword());
+        DBStyle mysql = new MySqlStyle();
+        SQLLoader loader = new ClasspathLoader("/");
+        UnderlinedNameConversion nc = new UnderlinedNameConversion();
+        SQLManager sqlManager = new SQLManager(mysql, loader,
+                source, nc, new Interceptor[]{new DebugInterceptor()});
+        DSTransactionManager.start();
+        KeyHolder keyHolder = new KeyHolder();
+        sqlManager.insert(KTransRecord.class, kTransRecord, keyHolder);
+        int key = keyHolder.getInt();
+        KTransMonitor template = new KTransMonitor();
+        template.setAddUser(kTransRecord.getAddUser());
+        template.setMonitorTrans(kTransRecord.getRecordTrans());
+        KTransMonitor templateOne = sqlManager.templateOne(template);
+        templateOne.setLastExecuteTime(lastExecuteTime);
+        templateOne.setNextExecuteTime(nextExecuteTime);
+        sqlManager.updateById(templateOne);
+        DSTransactionManager.commit();
+        return key;
+    }
+
+    /**
+     * @param DbConnectionObject 数据库连接对象
+     * @param kTransRecord       转换运行记录对象
      * @param logText            日志记录
      * @return void
      * @throws IOException
@@ -244,7 +291,12 @@ public class TransQuartz implements InterruptableJob {
         SQLManager sqlManager = new SQLManager(mysql, loader,
                 source, nc, new Interceptor[]{new DebugInterceptor()});
         DSTransactionManager.start();
-        sqlManager.insert(kTransRecord);
+        if (null != kTransRecord.getRecordId()) {
+            sqlManager.updateById(kTransRecord);
+        }else{
+            sqlManager.insert(kTransRecord);
+        }
+
         KTransMonitor template = new KTransMonitor();
         template.setAddUser(kTransRecord.getAddUser());
         template.setMonitorTrans(kTransRecord.getRecordTrans());

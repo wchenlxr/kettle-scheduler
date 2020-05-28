@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -16,6 +18,7 @@ import org.beetl.sql.core.SQLLoader;
 import org.beetl.sql.core.SQLManager;
 import org.beetl.sql.core.UnderlinedNameConversion;
 import org.beetl.sql.core.db.DBStyle;
+import org.beetl.sql.core.db.KeyHolder;
 import org.beetl.sql.core.db.MySqlStyle;
 import org.beetl.sql.ext.DebugInterceptor;
 import org.pentaho.di.core.ProgressNullMonitorListener;
@@ -116,8 +119,16 @@ public class JobQuartz implements InterruptableJob {
 //            Date jobStartDate = null;
             Date jobStopDate = null;
             String logText = null;
+            int key = -1;
             try {
 //                jobStartDate = new Date();
+                KJobRecord kJobRecord = new KJobRecord();
+                kJobRecord.setRecordJob(Integer.parseInt(jobId));
+                kJobRecord.setAddUser(Integer.parseInt(userId));
+                kJobRecord.setRecordStatus(0);
+                kJobRecord.setStartTime(executeTime);
+                kJobRecord.setStopTime(null);
+                key = writeToDBAndFileAtBegin(DbConnectionObject, kJobRecord, executeTime, nexExecuteTime);
                 job.run();
                 job.waitUntilFinished();
                 jobStopDate = new Date();
@@ -128,7 +139,7 @@ public class JobQuartz implements InterruptableJob {
                 if (job.isFinished()) {
                     if (job.getErrors() > 0) {
                         recordStatus = 2;
-                        if(null == job.getResult().getLogText() || "".equals(job.getResult().getLogText())){
+                        if (null == job.getResult().getLogText() || "".equals(job.getResult().getLogText())) {
                             logText = exception;
                         }
                     }
@@ -148,6 +159,8 @@ public class JobQuartz implements InterruptableJob {
                         kJobRecord.setRecordStatus(recordStatus);
                         kJobRecord.setStartTime(executeTime);
                         kJobRecord.setStopTime(jobStopDate);
+                        if (key > -1)
+                            kJobRecord.setRecordId(key);
                         writeToDBAndFile(DbConnectionObject, kJobRecord, logText, executeTime, nexExecuteTime);
                     } catch (IOException | SQLException e) {
                         e.printStackTrace();
@@ -156,6 +169,7 @@ public class JobQuartz implements InterruptableJob {
             }
         }
     }
+
 
     public void runFileJob(Object DbConnectionObject, String jobId, String jobPath, String jobName,
                            String userId, String logLevel, String logFilePath, Date lastExecuteTime, Date nexExecuteTime) throws KettleXMLException, KettleMissingPluginsException {
@@ -233,7 +247,12 @@ public class JobQuartz implements InterruptableJob {
         SQLManager sqlManager = new SQLManager(mysql, loader,
                 source, nc, new Interceptor[]{new DebugInterceptor()});
         DSTransactionManager.start();
-        sqlManager.insert(kJobRecord);
+        if (null != kJobRecord.getRecordId()) {
+            sqlManager.updateById(kJobRecord);
+        }else{
+            sqlManager.insert(kJobRecord);
+        }
+
         KJobMonitor template = new KJobMonitor();
         template.setAddUser(kJobRecord.getAddUser());
         template.setMonitorJob(kJobRecord.getRecordJob());
@@ -257,5 +276,42 @@ public class JobQuartz implements InterruptableJob {
     public void interrupt() throws UnableToInterruptJobException {
         //stop the running job
         this.job.stopAll();
+    }
+
+
+    /**
+     * @param DbConnectionObject 数据库连接对象
+     * @param kJobRecord         作业记录信息
+     * @return void
+     * @throws IOException
+     * @throws SQLException
+     * @Title writeToDBAndFile
+     * @Description 保存作业运行日志信息到文件和数据库
+     */
+    private int writeToDBAndFileAtBegin(Object DbConnectionObject, KJobRecord kJobRecord, Date lastExecuteTime, Date nextExecuteTime)
+            throws SQLException {
+        // 写入转换运行记录到数据库
+        DBConnectionModel DBConnectionModel = (DBConnectionModel) DbConnectionObject;
+        ConnectionSource source = ConnectionSourceHelper.getSimple(DBConnectionModel.getConnectionDriveClassName(),
+                DBConnectionModel.getConnectionUrl(), DBConnectionModel.getConnectionUser(), DBConnectionModel.getConnectionPassword());
+        DBStyle mysql = new MySqlStyle();
+        SQLLoader loader = new ClasspathLoader("/");
+        UnderlinedNameConversion nc = new UnderlinedNameConversion();
+        SQLManager sqlManager = new SQLManager(mysql, loader,
+                source, nc, new Interceptor[]{new DebugInterceptor()});
+        DSTransactionManager.start();
+        KeyHolder keyHolder = new KeyHolder();
+        sqlManager.insert(KJobRecord.class, kJobRecord, keyHolder);
+        int key = keyHolder.getInt();
+        KJobMonitor template = new KJobMonitor();
+        template.setAddUser(kJobRecord.getAddUser());
+        template.setMonitorJob(kJobRecord.getRecordJob());
+        KJobMonitor templateOne = sqlManager.templateOne(template);
+        templateOne.setLastExecuteTime(lastExecuteTime);
+        //在监控表中增加下一次执行时间
+        templateOne.setNextExecuteTime(nextExecuteTime);
+        sqlManager.updateById(templateOne);
+        DSTransactionManager.commit();
+        return key;
     }
 }
