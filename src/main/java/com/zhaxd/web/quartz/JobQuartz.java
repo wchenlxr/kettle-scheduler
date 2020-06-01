@@ -1,22 +1,14 @@
 package com.zhaxd.web.quartz;
 
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
-
+import com.zhaxd.common.kettle.repository.RepositoryUtil;
+import com.zhaxd.common.toolkit.Constant;
+import com.zhaxd.core.model.KJobMonitor;
+import com.zhaxd.core.model.KJobRecord;
+import com.zhaxd.core.model.KRepository;
+import com.zhaxd.web.quartz.model.DBConnectionModel;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
-import org.beetl.sql.core.ClasspathLoader;
-import org.beetl.sql.core.ConnectionSource;
-import org.beetl.sql.core.ConnectionSourceHelper;
-import org.beetl.sql.core.DSTransactionManager;
-import org.beetl.sql.core.Interceptor;
-import org.beetl.sql.core.SQLLoader;
-import org.beetl.sql.core.SQLManager;
-import org.beetl.sql.core.UnderlinedNameConversion;
+import org.beetl.sql.core.*;
 import org.beetl.sql.core.db.DBStyle;
 import org.beetl.sql.core.db.KeyHolder;
 import org.beetl.sql.core.db.MySqlStyle;
@@ -33,12 +25,10 @@ import org.pentaho.di.repository.RepositoryDirectoryInterface;
 import org.pentaho.di.repository.kdr.KettleDatabaseRepository;
 import org.quartz.*;
 
-import com.zhaxd.common.kettle.repository.RepositoryUtil;
-import com.zhaxd.common.toolkit.Constant;
-import com.zhaxd.core.model.KJobMonitor;
-import com.zhaxd.core.model.KJobRecord;
-import com.zhaxd.core.model.KRepository;
-import com.zhaxd.web.quartz.model.DBConnectionModel;
+import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Date;
 
 @DisallowConcurrentExecution
 public class JobQuartz implements InterruptableJob {
@@ -249,7 +239,7 @@ public class JobQuartz implements InterruptableJob {
         DSTransactionManager.start();
         if (null != kJobRecord.getRecordId()) {
             sqlManager.updateById(kJobRecord);
-        }else{
+        } else {
             sqlManager.insert(kJobRecord);
         }
 

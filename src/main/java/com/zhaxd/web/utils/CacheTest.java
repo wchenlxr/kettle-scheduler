@@ -25,17 +25,13 @@ public class CacheTest {
         Cache cache = cacheManager.getCache("sysCache");
         Element value1 = cache.get("key1");
         // 3. 创建元素
-        Element element = new Element("key1", "value1");
-
         // 4. 将元素添加到缓存
-        cache.put(element);
+        cache.put(new Element("key1", "value1"));
 
-        // 5. 获取缓存
-        Element value = cache.get("key1");
-        System.out.println("value: " + value);
-        System.out.println(value.getObjectValue());
         // 7. 刷新缓存
         cache.flush();
-
+        // 8. 关闭缓存管理器
+        cacheManager.shutdown();
+        System.out.println("");
     }
 }

@@ -1,21 +1,14 @@
 package com.zhaxd.web.quartz;
 
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.Date;
-
-import com.zhaxd.core.model.KJobRecord;
+import com.zhaxd.common.kettle.repository.RepositoryUtil;
+import com.zhaxd.common.toolkit.Constant;
+import com.zhaxd.core.model.KRepository;
+import com.zhaxd.core.model.KTransMonitor;
+import com.zhaxd.core.model.KTransRecord;
+import com.zhaxd.web.quartz.model.DBConnectionModel;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
-import org.beetl.sql.core.ClasspathLoader;
-import org.beetl.sql.core.ConnectionSource;
-import org.beetl.sql.core.ConnectionSourceHelper;
-import org.beetl.sql.core.DSTransactionManager;
-import org.beetl.sql.core.Interceptor;
-import org.beetl.sql.core.SQLLoader;
-import org.beetl.sql.core.SQLManager;
-import org.beetl.sql.core.UnderlinedNameConversion;
+import org.beetl.sql.core.*;
 import org.beetl.sql.core.db.DBStyle;
 import org.beetl.sql.core.db.KeyHolder;
 import org.beetl.sql.core.db.MySqlStyle;
@@ -33,12 +26,10 @@ import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.quartz.*;
 
-import com.zhaxd.common.kettle.repository.RepositoryUtil;
-import com.zhaxd.common.toolkit.Constant;
-import com.zhaxd.core.model.KRepository;
-import com.zhaxd.core.model.KTransMonitor;
-import com.zhaxd.core.model.KTransRecord;
-import com.zhaxd.web.quartz.model.DBConnectionModel;
+import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Date;
 
 @DisallowConcurrentExecution
 public class TransQuartz implements InterruptableJob {
@@ -100,6 +91,7 @@ public class TransQuartz implements InterruptableJob {
         } else {
             kettleDatabaseRepository = RepositoryUtil.connectionRepository(kRepository);
         }
+        if (false == kettleDatabaseRepository.test()) throw new KettleException("连接中断");
         if (null != kettleDatabaseRepository) {
             RepositoryDirectoryInterface directory = kettleDatabaseRepository.loadRepositoryDirectoryTree()
                     .findDirectory(transPath);
@@ -293,7 +285,7 @@ public class TransQuartz implements InterruptableJob {
         DSTransactionManager.start();
         if (null != kTransRecord.getRecordId()) {
             sqlManager.updateById(kTransRecord);
-        }else{
+        } else {
             sqlManager.insert(kTransRecord);
         }
 

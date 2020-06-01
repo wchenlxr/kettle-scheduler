@@ -57,6 +57,7 @@ $("#transRepositoryId").change(function(){
 		$.ajax({
 			type: 'POST',
 		 	async: false,
+            timeout : 300000,
 		 	url: 'repository/database/getTransTree.shtml',
 		 	data: {
 		 		repositoryId : repositoryId  

@@ -11,7 +11,6 @@ import com.zhaxd.web.quartz.model.DBConnectionModel;
 import com.zhaxd.web.utils.CommonUtils;
 import org.apache.commons.lang.StringUtils;
 import org.beetl.sql.core.DSTransactionManager;
-import org.beetl.sql.core.SQLManager;
 import org.beetl.sql.core.db.KeyHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -237,15 +236,19 @@ public class JobService {
 
     @PostConstruct
     public void scanJob() {
-        KJob kJob = new KJob();
-        kJob.setJobStatus(1);
-        List<KJob> kJobs = kJobDao.queryByCondition(kJob);
-        kJobs.stream().map(job -> job.getJobId()).forEach(jobid -> {
-            KJobRecord kJobRecord = kJobRecordDao.selectLastJob(jobid);
-            if (0 == kJobRecord.getRecordStatus())
-                kJobRecordDao.deleteById(kJobRecord.getRecordId());
-            scanStart(jobid);
-        });
+        try {
+            KJob kJob = new KJob();
+            kJob.setJobStatus(1);
+            List<KJob> kJobs = kJobDao.queryByCondition(kJob);
+            kJobs.stream().map(job -> job.getJobId()).forEach(jobid -> {
+                KJobRecord kJobRecord = kJobRecordDao.selectLastJob(jobid);
+                if (null != kJobRecord && 0 == kJobRecord.getRecordStatus())
+                    kJobRecordDao.deleteById(kJobRecord.getRecordId());
+                scanStart(jobid);
+            });
+        } catch (Exception e) {
+
+        }
     }
 
     /**
@@ -371,7 +374,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String               ,               String> 任务调度的基础信息
+     * @return Map<String                                                                                                                               ,                                                                                                                               String> 任务调度的基础信息
      * @Title getQuartzBasic
      * @Description 获取任务调度的基础信息
      */
@@ -404,7 +407,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String               ,               Object>
+     * @return Map<String                                                                                                                               ,                                                                                                                               Object>
      * @Title getQuartzParameter
      * @Description 获取任务调度的参数
      */

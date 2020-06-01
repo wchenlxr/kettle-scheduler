@@ -57,6 +57,7 @@ $("#jobRepositoryId").change(function(){
 		$.ajax({
 			type: 'POST',
 		 	async: false,
+            timeout : 300000,
 		 	url: 'repository/database/getJobTree.shtml',
 		 	data: {
 		 		repositoryId : repositoryId  
