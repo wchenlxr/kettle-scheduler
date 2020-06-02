@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 
 @Service
@@ -36,8 +35,7 @@ public class DataBaseRepositoryService {
     @Autowired
     private CacheManager cacheManager;
 
-    @PostConstruct
-    private void scanRepositoryCache() {
+    public void scanRepositoryCache() {
         new Thread(() -> {
             List<KRepository> kRepositories = kRepositoryDao.all();
             kRepositories.stream().map(kRepository -> kRepository.getRepositoryId()).forEach(s -> {
@@ -59,8 +57,7 @@ public class DataBaseRepositoryService {
         }).start();
     }
 
-    @PostConstruct
-    private void scanKettle() {
+    public void scanKettle() {
         try {
             List<KRepository> kRepositories = kRepositoryDao.all();
             kRepositories.stream().forEach(

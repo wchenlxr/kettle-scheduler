@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Date;
@@ -234,7 +233,6 @@ public class JobService {
         kJobDao.updateTemplateById(kJob);
     }
 
-    @PostConstruct
     public void scanJob() {
         try {
             KJob kJob = new KJob();
