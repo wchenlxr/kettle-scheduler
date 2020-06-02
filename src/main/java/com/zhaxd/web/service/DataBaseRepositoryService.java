@@ -27,17 +27,19 @@ public class DataBaseRepositoryService {
 
 
     @Autowired
+    @SuppressWarnings("")
     private KRepositoryDao kRepositoryDao;
 
     @Autowired
+    @SuppressWarnings("")
     private KRepositoryTypeDao kRepositoryTypeDao;
 
     @Autowired
     private CacheManager cacheManager;
 
     public void scanRepositoryCache() {
-        new Thread(() -> {
-            List<KRepository> kRepositories = kRepositoryDao.all();
+        List<KRepository> kRepositories = kRepositoryDao.all();
+        if (null != kRepositories && kRepositories.size() > 0)
             kRepositories.stream().map(kRepository -> kRepository.getRepositoryId()).forEach(s -> {
                 Cache cache = cacheManager.getCache("sysCache");
                 try {
@@ -54,12 +56,11 @@ public class DataBaseRepositoryService {
                     scanRepositoryCache();
                 }
             });
-        }).start();
     }
 
     public void scanKettle() {
-        try {
-            List<KRepository> kRepositories = kRepositoryDao.all();
+        List<KRepository> kRepositories = kRepositoryDao.all();
+        if (null != kRepositories && kRepositories.size() > 0)
             kRepositories.stream().forEach(
                     kRepository -> {
                         // 拼接Quartz的任务名称
@@ -79,9 +80,6 @@ public class DataBaseRepositoryService {
                         //添加任务
                         QuartzManager.addJob(jobName.toString(), jobGroupName.toString(), triggerName, triggerGroupName, KettleQuartz.class, "0 0 0/1 * * ?", parameter);
                     });
-        } catch (Exception e) {
-
-        }
     }
 
     /**

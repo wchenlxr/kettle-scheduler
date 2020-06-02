@@ -234,19 +234,16 @@ public class JobService {
     }
 
     public void scanJob() {
-        try {
-            KJob kJob = new KJob();
-            kJob.setJobStatus(1);
-            List<KJob> kJobs = kJobDao.queryByCondition(kJob);
+        KJob kJob = new KJob();
+        kJob.setJobStatus(1);
+        List<KJob> kJobs = kJobDao.queryByCondition(kJob);
+        if (null != kJobs && kJobs.size() > 0)
             kJobs.stream().map(job -> job.getJobId()).forEach(jobid -> {
                 KJobRecord kJobRecord = kJobRecordDao.selectLastJob(jobid);
                 if (null != kJobRecord && 0 == kJobRecord.getRecordStatus())
                     kJobRecordDao.deleteById(kJobRecord.getRecordId());
                 scanStart(jobid);
             });
-        } catch (Exception e) {
-
-        }
     }
 
     /**
@@ -372,7 +369,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String                                                                                                                               ,                                                                                                                               String> 任务调度的基础信息
+     * @return Map<String                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               String> 任务调度的基础信息
      * @Title getQuartzBasic
      * @Description 获取任务调度的基础信息
      */
@@ -405,7 +402,7 @@ public class JobService {
 
     /**
      * @param kJob 转换对象
-     * @return Map<String                                                                                                                               ,                                                                                                                               Object>
+     * @return Map<String                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Object>
      * @Title getQuartzParameter
      * @Description 获取任务调度的参数
      */
