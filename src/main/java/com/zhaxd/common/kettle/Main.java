@@ -21,7 +21,7 @@ public class Main {
 		KettleEnvironment.init();		
 		//数据库连接元对象
     	//DatabaseMeta databaseMeta = new DatabaseMeta(null, "MYSQL", "Native", "172.17.7.78", "kettle-repository", "3306", "root", "123456");
-    	DatabaseMeta databaseMeta = new DatabaseMeta(null, "MYSQL", "Native", "localhost", "kettle", "3306", "root", "123456");
+    	DatabaseMeta databaseMeta = new DatabaseMeta(null, "ORACLE", "Native", "10.255.12.35", "orcl", "1521", "etl", "Adte123ch");
     	//资源库元对象
         KettleDatabaseRepositoryMeta repositoryInfo = new KettleDatabaseRepositoryMeta();
         repositoryInfo.setConnection(databaseMeta);

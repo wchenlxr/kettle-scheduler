@@ -25,7 +25,7 @@ public class StartInit implements InitializingBean {
         org.pentaho.di.core.KettleEnvironment.init();
         jobService.scanJob();
         transService.scanJob();
-        dataBaseRepositoryService.scanKettle();
+//        dataBaseRepositoryService.scanKettle();
         dataBaseRepositoryService.scanRepositoryCache();
     }
 

@@ -1,8 +1,9 @@
 package com.zhaxd.web.controller;
 
-import java.io.File;
-import java.io.IOException;
-
+import com.zhaxd.core.mapper.KJobRecordDao;
+import com.zhaxd.core.mapper.KTransRecordDao;
+import com.zhaxd.core.model.KJobRecord;
+import com.zhaxd.core.model.KTransRecord;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import com.zhaxd.core.mapper.KJobRecordDao;
-import com.zhaxd.core.mapper.KTransRecordDao;
-import com.zhaxd.core.model.KJobRecord;
-import com.zhaxd.core.model.KTransRecord;
+import java.io.File;
+import java.io.IOException;
 
 @Controller
 @RequestMapping("/download/")

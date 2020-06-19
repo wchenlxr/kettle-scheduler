@@ -1,19 +1,5 @@
 package com.zhaxd.web.controller;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.dto.BootTablePage;
 import com.zhaxd.core.dto.ResultDto;
@@ -21,6 +7,14 @@ import com.zhaxd.core.model.KUser;
 import com.zhaxd.web.service.JobMonitorService;
 import com.zhaxd.web.service.TransMonitorService;
 import com.zhaxd.web.utils.JsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @RestController
 @RequestMapping("/main/")

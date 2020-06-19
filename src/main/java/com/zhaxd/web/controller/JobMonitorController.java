@@ -1,16 +1,15 @@
 package com.zhaxd.web.controller;
 
-import javax.servlet.http.HttpServletRequest;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.dto.BootTablePage;
 import com.zhaxd.core.model.KUser;
 import com.zhaxd.web.service.JobMonitorService;
 import com.zhaxd.web.utils.JsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/job/monitor/")

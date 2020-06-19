@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zhaxd.web.service.DataBaseRepositoryService;
+import org.apache.log4j.Logger;
 import org.pentaho.di.core.KettleEnvironment;
 import org.pentaho.di.core.database.DatabaseMeta;
 import org.pentaho.di.core.exception.KettleException;
@@ -20,8 +22,10 @@ import com.zhaxd.core.model.KRepository;
 
 public class RepositoryUtil {
 
-    public static Map<Integer, KettleDatabaseRepository> KettleDatabaseRepositoryCatch
-            = new HashMap<Integer, KettleDatabaseRepository>();
+    private static Logger logger = Logger.getLogger(RepositoryUtil.class);
+
+/*    public static Map<Integer, KettleDatabaseRepository> KettleDatabaseRepositoryCatch
+            = new HashMap<Integer, KettleDatabaseRepository>();*/
 
 
     public static void main(String[] args) throws KettleException {
@@ -82,39 +86,17 @@ public class RepositoryUtil {
             repository.init(repositoryInfo);
             repository.connect(kRepository.getRepositoryUsername(), kRepository.getRepositoryPassword());
             //添加缓存
-            if (null != kRepository.getRepositoryId()) {
+/*            if (null != kRepository.getRepositoryId()) {
                 KettleDatabaseRepositoryCatch.put(kRepository.getRepositoryId(), repository);
-            }
+            }*/
+            if (false == repository.test())
+                logger.error("connectionRepository后连接失败");
             return repository;
         }
         return null;
     }
 
-    /**
-     * @param repository
-     * @param ID
-     * @return void
-     * @Title disConnectionRepository
-     * @Description 断开资源库并删除缓存对象
-     */
-    public static void disConnectionRepository(KettleDatabaseRepository repository, Integer ID) {
-        repository.disconnect();
-        repository.clearSharedObjectCache();
-        KettleDatabaseRepositoryCatch.remove(ID);
-    }
 
-    /**
-     * @return void
-     * @Title disConnectionAllRepository
-     * @Description 断开全部资源库
-     */
-    public static void disConnectionAllRepository() {
-        KettleDatabaseRepositoryCatch.forEach((ID, repository) -> {
-            repository.disconnect();
-            repository.clearSharedObjectCache();
-        });
-        KettleDatabaseRepositoryCatch.clear();
-    }
 
 
     /**

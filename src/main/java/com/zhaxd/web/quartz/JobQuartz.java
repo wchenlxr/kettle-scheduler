@@ -8,6 +8,7 @@ import com.zhaxd.core.model.KRepository;
 import com.zhaxd.web.quartz.model.DBConnectionModel;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.beetl.sql.core.*;
 import org.beetl.sql.core.db.DBStyle;
 import org.beetl.sql.core.db.KeyHolder;
@@ -34,6 +35,8 @@ import java.util.Date;
 public class JobQuartz implements InterruptableJob {
     private org.pentaho.di.job.Job job;
 
+    private static Logger logger = Logger.getLogger(JobQuartz.class);
+
     public void execute(JobExecutionContext context) throws JobExecutionException {
 
         JobDataMap jobDataMap = context.getJobDetail().getJobDataMap();
@@ -49,16 +52,11 @@ public class JobQuartz implements InterruptableJob {
         String logFilePath = String.valueOf(jobDataMap.get(Constant.LOGFILEPATH));
         Date lastExecuteTime = context.getFireTime();
         Date nexExecuteTime = context.getNextFireTime();
-
         if (null != DbConnectionObject && DbConnectionObject instanceof DBConnectionModel) {// 首先判断数据库连接对象是否正确
             // 判断作业类型
             if (null != KRepositoryObject && KRepositoryObject instanceof KRepository) {// 证明该作业是从资源库中获取到的
-                try {
-                    runRepositoryJob(KRepositoryObject, DbConnectionObject, jobId, jobPath, jobName, userId, logLevel,
-                            logFilePath, lastExecuteTime, nexExecuteTime);
-                } catch (KettleException e) {
-                    e.printStackTrace();
-                }
+                runRepositoryJob(KRepositoryObject, DbConnectionObject, jobId, jobPath, jobName, userId, logLevel,
+                        logFilePath, lastExecuteTime, nexExecuteTime);
             } else {
                 try {
                     runFileJob(DbConnectionObject, jobId, jobPath, jobName, userId, logLevel, logFilePath, lastExecuteTime, nexExecuteTime);
@@ -84,39 +82,98 @@ public class JobQuartz implements InterruptableJob {
      * @Description 运行资源库中的作业
      */
     public void runRepositoryJob(Object KRepositoryObject, Object DbConnectionObject, String jobId,
-                                 String jobPath, String jobName, String userId, String logLevel, String logFilePath, Date executeTime, Date nexExecuteTime) throws KettleException {
+                                 String jobPath, String jobName, String userId, String logLevel, String logFilePath, Date executeTime, Date nexExecuteTime) {
+        logger.debug(jobPath + jobName + "进入");
         KRepository kRepository = (KRepository) KRepositoryObject;
-        Integer repositoryId = kRepository.getRepositoryId();
         KettleDatabaseRepository kettleDatabaseRepository = null;
-        if (RepositoryUtil.KettleDatabaseRepositoryCatch.containsKey(repositoryId)) {
-            kettleDatabaseRepository = RepositoryUtil.KettleDatabaseRepositoryCatch.get(repositoryId);
-        } else {
+        // 写入作业执行结果
+        StringBuilder allLogFilePath = new StringBuilder();
+        allLogFilePath.append(logFilePath).append(File.separator).append(userId).append(File.separator)
+                .append(StringUtils.remove(jobPath, File.separator)).append("@").append(jobName).append("-log")
+                .append(File.separator).append(new Date().getTime()).append(".").append("txt");
+        KJobRecord kJobRecord = new KJobRecord();
+        kJobRecord.setRecordJob(Integer.parseInt(jobId));
+        kJobRecord.setAddUser(Integer.parseInt(userId));
+        kJobRecord.setLogFilePath(allLogFilePath.toString());
+        kJobRecord.setStartTime(executeTime);
+        kJobRecord.setStopTime(executeTime);
+        kJobRecord.setRecordStatus(2);
+        try {
             kettleDatabaseRepository = RepositoryUtil.connectionRepository(kRepository);
+        } catch (KettleException e) {
+            e.printStackTrace();
+            try {
+                writeToDBAndFile(DbConnectionObject, kJobRecord, e.toString(), executeTime, nexExecuteTime);
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            } finally {
+                kettleDatabaseRepository.disconnect();
+                return;
+            }
         }
         if (null != kettleDatabaseRepository) {
-            RepositoryDirectoryInterface directory = kettleDatabaseRepository.loadRepositoryDirectoryTree()
-                    .findDirectory(jobPath);
-            JobMeta jobMeta = kettleDatabaseRepository.loadJob(jobName, directory, new ProgressNullMonitorListener(),
-                    null);
+            RepositoryDirectoryInterface directory = null;
+            try {
+                directory = kettleDatabaseRepository.loadRepositoryDirectoryTree()
+                        .findDirectory(jobPath);
+                if (null == directory) {
+                    try {
+                        writeToDBAndFile(DbConnectionObject, kJobRecord, jobPath + " 目录结构错误", executeTime, nexExecuteTime);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    } finally {
+                        kettleDatabaseRepository.disconnect();
+                        return;
+                    }
+                }
+            } catch (KettleException e) {
+                e.printStackTrace();
+                try {
+                    writeToDBAndFile(DbConnectionObject, kJobRecord, e.toString(), executeTime, nexExecuteTime);
+                } catch (IOException e1) {
+                    e.printStackTrace();
+                } catch (SQLException e1) {
+                    e.printStackTrace();
+                } finally {
+                    kettleDatabaseRepository.disconnect();
+                    return;
+                }
+            }
+
+            JobMeta jobMeta = null;
+            try {
+                jobMeta = kettleDatabaseRepository.loadJob(jobName, directory, new ProgressNullMonitorListener(),
+                        null);
+            } catch (KettleException e) {
+                e.printStackTrace();
+                try {
+                    writeToDBAndFile(DbConnectionObject, kJobRecord, e.toString(), executeTime, nexExecuteTime);
+                } catch (IOException e1) {
+                    e.printStackTrace();
+                } catch (SQLException e1) {
+                    e.printStackTrace();
+                } finally {
+                    kettleDatabaseRepository.disconnect();
+                    return;
+                }
+            }
             job = new org.pentaho.di.job.Job(kettleDatabaseRepository, jobMeta);
             job.setDaemon(true);
             job.setLogLevel(LogLevel.DEBUG);
             if (StringUtils.isNotEmpty(logLevel)) {
                 job.setLogLevel(Constant.logger(logLevel));
             }
+            String logText = null;
             String exception = null;
             Integer recordStatus = 1;
-//            Date jobStartDate = null;
             Date jobStopDate = null;
-            String logText = null;
             int key = -1;
             try {
-//                jobStartDate = new Date();
-                KJobRecord kJobRecord = new KJobRecord();
-                kJobRecord.setRecordJob(Integer.parseInt(jobId));
-                kJobRecord.setAddUser(Integer.parseInt(userId));
                 kJobRecord.setRecordStatus(0);
-                kJobRecord.setStartTime(executeTime);
                 kJobRecord.setStopTime(null);
                 key = writeToDBAndFileAtBegin(DbConnectionObject, kJobRecord, executeTime, nexExecuteTime);
                 job.run();
@@ -133,21 +190,11 @@ public class JobQuartz implements InterruptableJob {
                             logText = exception;
                         }
                     }
-                    // 写入作业执行结果
-                    StringBuilder allLogFilePath = new StringBuilder();
-                    allLogFilePath.append(logFilePath).append("/").append(userId).append("/")
-                            .append(StringUtils.remove(jobPath, "/")).append("@").append(jobName).append("-log")
-                            .append("/").append(new Date().getTime()).append(".").append("txt");
                     String logChannelId = job.getLogChannelId();
                     LoggingBuffer appender = KettleLogStore.getAppender();
                     logText = appender.getBuffer(logChannelId, true).toString();
                     try {
-                        KJobRecord kJobRecord = new KJobRecord();
-                        kJobRecord.setRecordJob(Integer.parseInt(jobId));
-                        kJobRecord.setAddUser(Integer.parseInt(userId));
-                        kJobRecord.setLogFilePath(allLogFilePath.toString());
                         kJobRecord.setRecordStatus(recordStatus);
-                        kJobRecord.setStartTime(executeTime);
                         kJobRecord.setStopTime(jobStopDate);
                         if (key > -1)
                             kJobRecord.setRecordId(key);
@@ -156,6 +203,7 @@ public class JobQuartz implements InterruptableJob {
                         e.printStackTrace();
                     }
                 }
+                kettleDatabaseRepository.disconnect();
             }
         }
     }

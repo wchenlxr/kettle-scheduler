@@ -1,7 +1,5 @@
 package com.zhaxd.web.quartz;
 
-import java.util.Date;
-
 import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.model.KJob;
 import com.zhaxd.core.model.KTrans;
@@ -14,6 +12,8 @@ import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
+
+import java.util.Date;
 
 public class QuartzListener implements JobListener{
 

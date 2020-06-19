@@ -1,41 +1,44 @@
 package com.zhaxd.web.service;
 
 import com.zhaxd.common.kettle.repository.RepositoryUtil;
-import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.dto.BootTablePage;
 import com.zhaxd.core.dto.kettle.RepositoryTree;
 import com.zhaxd.core.mapper.KRepositoryDao;
 import com.zhaxd.core.mapper.KRepositoryTypeDao;
 import com.zhaxd.core.model.KRepository;
 import com.zhaxd.core.model.KRepositoryType;
-import com.zhaxd.web.quartz.KettleQuartz;
-import com.zhaxd.web.quartz.QuartzManager;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Element;
-import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.repository.kdr.KettleDatabaseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+//import com.zhaxd.web.quartz.KettleQuartz;
 
 @Service
 public class DataBaseRepositoryService {
 
 
     @Autowired
-    @SuppressWarnings("")
+    @SuppressWarnings("all")
     private KRepositoryDao kRepositoryDao;
 
     @Autowired
-    @SuppressWarnings("")
+    @SuppressWarnings("all")
     private KRepositoryTypeDao kRepositoryTypeDao;
 
     @Autowired
     private CacheManager cacheManager;
+
+    private static Logger logger = Logger.getLogger(DataBaseRepositoryService.class);
 
     public void scanRepositoryCache() {
         List<KRepository> kRepositories = kRepositoryDao.all();
@@ -58,7 +61,7 @@ public class DataBaseRepositoryService {
             });
     }
 
-    public void scanKettle() {
+  /*  public void scanKettle() {
         List<KRepository> kRepositories = kRepositoryDao.all();
         if (null != kRepositories && kRepositories.size() > 0)
             kRepositories.stream().forEach(
@@ -78,9 +81,9 @@ public class DataBaseRepositoryService {
                         Map<String, Object> parameter = new HashMap<>();
                         parameter.put(Constant.REPOSITORYOBJECT, kRepository);
                         //添加任务
-                        QuartzManager.addJob(jobName.toString(), jobGroupName.toString(), triggerName, triggerGroupName, KettleQuartz.class, "0 0 0/1 * * ?", parameter);
+                        QuartzManager.addJob(jobName.toString(), jobGroupName.toString(), triggerName, triggerGroupName, KettleQuartz.class, "0/10 * * * * ?", parameter);
                     });
-    }
+    }*/
 
     /**
      * @param repositoryId
@@ -90,18 +93,26 @@ public class DataBaseRepositoryService {
      * @Description 获取数据库资源库的树形菜单
      */
     @Cacheable(value = "sysCache", key = "'repositoryId:' + #repositoryId")
-    public List<RepositoryTree> getTreeList(Integer repositoryId) throws KettleException {
+    public List<RepositoryTree> getTreeList(Integer repositoryId) {
         KettleDatabaseRepository kettleDatabaseRepository = null;
         List<RepositoryTree> allRepositoryTreeList = new ArrayList<RepositoryTree>();
-        if (RepositoryUtil.KettleDatabaseRepositoryCatch.containsKey(repositoryId)) {
-            kettleDatabaseRepository = RepositoryUtil.KettleDatabaseRepositoryCatch.get(repositoryId);
-        } else {
-            KRepository kRepository = kRepositoryDao.unique(repositoryId);
+        KRepository kRepository = kRepositoryDao.unique(repositoryId);
+        try {
             kettleDatabaseRepository = RepositoryUtil.connectionRepository(kRepository);
+        } catch (KettleException e) {
+            logger.error("连接失败>" + e.toString());
+            e.printStackTrace();
+            return null;
         }
-        if (null != kettleDatabaseRepository) {
+        if (kettleDatabaseRepository.test()) {
             List<RepositoryTree> repositoryTreeList = new ArrayList<RepositoryTree>();
-            allRepositoryTreeList = RepositoryUtil.getAllDirectoryTreeList(kettleDatabaseRepository, "/", repositoryTreeList);
+            try {
+                allRepositoryTreeList = RepositoryUtil.getAllDirectoryTreeList(kettleDatabaseRepository, "/", repositoryTreeList);
+            } catch (KettleException e) {
+                logger.error("获取目录错误>" + e.toString());
+                e.printStackTrace();
+                return null;
+            }
         }
         return allRepositoryTreeList;
     }

@@ -50,12 +50,8 @@ public class TransQuartz implements InterruptableJob {
         if (null != DbConnectionObject && DbConnectionObject instanceof DBConnectionModel) {// 首先判断数据库连接对象是否正确
             // 判断转换类型
             if (null != KRepositoryObject && KRepositoryObject instanceof KRepository) {// 证明该转换是从资源库中获取到的
-                try {
-                    runRepositorytrans(KRepositoryObject, DbConnectionObject, transId, transPath, transName, userId,
-                            logLevel, logFilePath, lastExecuteTime, nexExecuteTime);
-                } catch (KettleException e) {
-                    e.printStackTrace();
-                }
+                runRepositorytrans(KRepositoryObject, DbConnectionObject, transId, transPath, transName, userId,
+                        logLevel, logFilePath, lastExecuteTime, nexExecuteTime);
             } else {
                 try {
                     runFiletrans(DbConnectionObject, transId, transPath, transName, userId, logLevel, logFilePath, lastExecuteTime, nexExecuteTime);
@@ -81,22 +77,82 @@ public class TransQuartz implements InterruptableJob {
      * @Description 运行资源库中的转换
      */
     private void runRepositorytrans(Object KRepositoryObject, Object DbConnectionObject, String transId,
-                                    String transPath, String transName, String userId, String logLevel, String logFilePath, Date executeTime, Date nexExecuteTime)
-            throws KettleException {
+                                    String transPath, String transName, String userId, String logLevel, String logFilePath, Date executeTime, Date nexExecuteTime) {
+        StringBuilder allLogFilePath = new StringBuilder();
+        allLogFilePath.append(logFilePath).append(File.separator).append(userId).append(File.separator)
+                .append(StringUtils.remove(transPath, File.separator)).append("@").append(transName).append("-log")
+                .append(File.separator).append(new Date().getTime()).append(".").append("txt");
+        KTransRecord kTransRecord = new KTransRecord();
+        kTransRecord.setRecordTrans(Integer.parseInt(transId));
+        kTransRecord.setLogFilePath(allLogFilePath.toString());
+        kTransRecord.setAddUser(Integer.parseInt(userId));
+        kTransRecord.setRecordStatus(2);
+        kTransRecord.setStartTime(executeTime);
+        kTransRecord.setStopTime(executeTime);
         KRepository kRepository = (KRepository) KRepositoryObject;
-        Integer repositoryId = kRepository.getRepositoryId();
         KettleDatabaseRepository kettleDatabaseRepository = null;
-        if (RepositoryUtil.KettleDatabaseRepositoryCatch.containsKey(repositoryId)) {
-            kettleDatabaseRepository = RepositoryUtil.KettleDatabaseRepositoryCatch.get(repositoryId);
-        } else {
+        try {
             kettleDatabaseRepository = RepositoryUtil.connectionRepository(kRepository);
+        } catch (KettleException e) {
+            e.printStackTrace();
+            try {
+                writeToDBAndFile(DbConnectionObject, kTransRecord, e.toString(), executeTime, nexExecuteTime);
+            } catch (IOException e1) {
+                e.printStackTrace();
+            } catch (SQLException e1) {
+                e.printStackTrace();
+            } finally {
+                kettleDatabaseRepository.disconnect();
+                return;
+            }
         }
-        if (false == kettleDatabaseRepository.test()) throw new KettleException("连接中断");
         if (null != kettleDatabaseRepository) {
-            RepositoryDirectoryInterface directory = kettleDatabaseRepository.loadRepositoryDirectoryTree()
-                    .findDirectory(transPath);
-            TransMeta transMeta = kettleDatabaseRepository.loadTransformation(transName, directory,
-                    new ProgressNullMonitorListener(), true, null);
+            RepositoryDirectoryInterface directory = null;
+            try {
+                directory = kettleDatabaseRepository.loadRepositoryDirectoryTree()
+                        .findDirectory(transPath);
+            } catch (KettleException e) {
+                e.printStackTrace();
+                try {
+                    writeToDBAndFile(DbConnectionObject, kTransRecord, e.toString(), executeTime, nexExecuteTime);
+                } catch (IOException e1) {
+                    e.printStackTrace();
+                } catch (SQLException e1) {
+                    e.printStackTrace();
+                } finally {
+                    kettleDatabaseRepository.disconnect();
+                    return;
+                }
+            }
+            if (null == directory) {
+                try {
+                    writeToDBAndFile(DbConnectionObject, kTransRecord, transPath + " 目录结构错误", executeTime, nexExecuteTime);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } finally {
+                    kettleDatabaseRepository.disconnect();
+                    return;
+                }
+            }
+            TransMeta transMeta = null;
+            try {
+                transMeta = kettleDatabaseRepository.loadTransformation(transName, directory,
+                        new ProgressNullMonitorListener(), true, null);
+            } catch (KettleException e) {
+                e.printStackTrace();
+                try {
+                    writeToDBAndFile(DbConnectionObject, kTransRecord, e.toString(), executeTime, nexExecuteTime);
+                } catch (IOException e1) {
+                    e.printStackTrace();
+                } catch (SQLException e1) {
+                    e.printStackTrace();
+                } finally {
+                    kettleDatabaseRepository.disconnect();
+                    return;
+                }
+            }
             trans = new Trans(transMeta);
             trans.setLogLevel(LogLevel.DEBUG);
             if (StringUtils.isNotEmpty(logLevel)) {
@@ -104,17 +160,10 @@ public class TransQuartz implements InterruptableJob {
             }
             String exception = null;
             Integer recordStatus = 1;
-//            Date transStartDate = null;
             Date transStopDate = null;
             String logText = null;
             int key = -1;
             try {
-//                transStartDate = new Date();
-                KTransRecord kTransRecord = new KTransRecord();
-                kTransRecord.setRecordTrans(Integer.parseInt(transId));
-                kTransRecord.setAddUser(Integer.parseInt(userId));
-                kTransRecord.setRecordStatus(recordStatus);
-                kTransRecord.setStartTime(executeTime);
                 kTransRecord.setStopTime(null);
                 key = writeToDBAndFileAtBegin(DbConnectionObject, kTransRecord, executeTime, nexExecuteTime);
                 trans.execute(null);
@@ -132,20 +181,11 @@ public class TransQuartz implements InterruptableJob {
                         }
                     }
                     // 写入转换执行结果
-                    StringBuilder allLogFilePath = new StringBuilder();
-                    allLogFilePath.append(logFilePath).append("/").append(userId).append("/")
-                            .append(StringUtils.remove(transPath, "/")).append("@").append(transName).append("-log")
-                            .append("/").append(new Date().getTime()).append(".").append("txt");
                     String logChannelId = trans.getLogChannelId();
                     LoggingBuffer appender = KettleLogStore.getAppender();
                     logText = appender.getBuffer(logChannelId, true).toString();
                     try {
-                        KTransRecord kTransRecord = new KTransRecord();
-                        kTransRecord.setRecordTrans(Integer.parseInt(transId));
-                        kTransRecord.setLogFilePath(allLogFilePath.toString());
-                        kTransRecord.setAddUser(Integer.parseInt(userId));
                         kTransRecord.setRecordStatus(recordStatus);
-                        kTransRecord.setStartTime(executeTime);
                         kTransRecord.setStopTime(transStopDate);
                         if (key > -1)
                             kTransRecord.setRecordId(key);
@@ -154,6 +194,7 @@ public class TransQuartz implements InterruptableJob {
                         e.printStackTrace();
                     }
                 }
+                kettleDatabaseRepository.disconnect();
             }
         }
     }

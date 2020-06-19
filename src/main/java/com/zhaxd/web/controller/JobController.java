@@ -1,15 +1,5 @@
 package com.zhaxd.web.controller;
 
-import java.io.IOException;
-import java.sql.SQLException;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
 import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.dto.BootTablePage;
 import com.zhaxd.core.dto.ResultDto;
@@ -17,6 +7,14 @@ import com.zhaxd.core.model.KJob;
 import com.zhaxd.core.model.KUser;
 import com.zhaxd.web.service.JobService;
 import com.zhaxd.web.utils.JsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.sql.SQLException;
 
 
 @RestController

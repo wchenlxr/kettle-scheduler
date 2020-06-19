@@ -1,8 +1,9 @@
 package com.zhaxd.web.controller;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-
+import com.zhaxd.common.toolkit.Constant;
+import com.zhaxd.core.model.KUser;
+import com.zhaxd.web.service.UserService;
+import com.zhaxd.web.utils.JsonUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -10,10 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.zhaxd.common.toolkit.Constant;
-import com.zhaxd.core.model.KUser;
-import com.zhaxd.web.service.UserService;
-import com.zhaxd.web.utils.JsonUtils;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 @Controller
 @RequestMapping("/index/")

@@ -1,15 +1,14 @@
 package com.zhaxd.web.utils;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
+import com.zhaxd.core.dto.web.KRepositoryDto;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
-import com.zhaxd.core.dto.web.KRepositoryDto;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class DataValidate {
 
