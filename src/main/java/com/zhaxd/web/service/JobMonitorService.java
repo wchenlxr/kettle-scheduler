@@ -1,10 +1,8 @@
 package com.zhaxd.web.service;
 
-import com.zhaxd.common.toolkit.Constant;
 import com.zhaxd.core.dto.BootTablePage;
 import com.zhaxd.core.mapper.KJobMonitorDao;
 import com.zhaxd.core.model.KJobMonitor;
-import com.zhaxd.web.utils.CommonUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,11 +27,11 @@ public class JobMonitorService {
         KJobMonitor template = new KJobMonitor();
         template.setAddUser(uId);
         template.setMonitorStatus(monitorStatus);
-        if(StringUtils.isNotEmpty(jobName)){
+        if (StringUtils.isNotEmpty(jobName)) {
             template.setJobName(jobName);
         }
-        List<KJobMonitor> kJobMonitorList = kJobMonitorDao.pageQuery(template, start, size,categoryId);
-        Long allCount = kJobMonitorDao.allCount(template,categoryId);
+        List<KJobMonitor> kJobMonitorList = kJobMonitorDao.pageQuery(template, start, size, categoryId);
+        Long allCount = kJobMonitorDao.allCount(template, categoryId);
         BootTablePage bootTablePage = new BootTablePage();
         bootTablePage.setRows(kJobMonitorList);
         bootTablePage.setTotal(allCount);
@@ -41,7 +39,7 @@ public class JobMonitorService {
     }
 
     /**
-     * @param uId   用户ID
+     * @param uId 用户ID
      * @return BootTablePage
      * @Title getList
      * @Description 获取作业监控不分页列表
@@ -114,38 +112,4 @@ public class JobMonitorService {
         return allSuccess;
     }
 
-    /**
-     * @param uId 用户ID
-     * @return Map<String   ,   Object>
-     * @Title getTransLine
-     * @Description 获取7天内作业的折线图
-     */
-    public Map<String, Object> getJobLine(Integer uId) {
-        KJobMonitor template = new KJobMonitor();
-        template.setAddUser(uId);
-        List<KJobMonitor> kJobMonitorList = kJobMonitorDao.template(template);
-        HashMap<String, Object> resultMap = new HashMap<String, Object>();
-        List<Integer> resultList = new ArrayList<Integer>();
-        for (int i = 0; i < 7; i++) {
-            resultList.add(i, 0);
-        }
-        if (kJobMonitorList != null && !kJobMonitorList.isEmpty()) {
-            for (KJobMonitor KJobMonitor : kJobMonitorList) {
-                String runStatus = KJobMonitor.getRunStatus();
-                if (runStatus != null && runStatus.contains(",")) {
-                    String[] startList = runStatus.split(",");
-                    for (String startOnce : startList) {
-                        String[] startAndStopTime = startOnce.split(Constant.RUNSTATUS_SEPARATE);
-                        if (startAndStopTime.length != 2)
-                            continue;
-                        //得到一次任务的起始时间和结束时间的毫秒值
-                        resultList = CommonUtils.getEveryDayData(Long.parseLong(startAndStopTime[0]), Long.parseLong(startAndStopTime[1]), resultList);
-                    }
-                }
-            }
-        }
-        resultMap.put("name", "作业");
-        resultMap.put("data", resultList);
-        return resultMap;
-    }
 }

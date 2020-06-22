@@ -455,10 +455,10 @@ public class JobService {
         KJobMonitor templateOne = kJobMonitorDao.templateOne(template);
         if (null != templateOne) {
             templateOne.setMonitorStatus(1);
-            StringBuilder runStatusBuilder = new StringBuilder();
+/*            StringBuilder runStatusBuilder = new StringBuilder();
             runStatusBuilder.append(templateOne.getRunStatus())
                     .append(",").append(new Date().getTime()).append(Constant.RUNSTATUS_SEPARATE);
-            templateOne.setRunStatus(runStatusBuilder.toString());
+            templateOne.setRunStatus(runStatusBuilder.toString());*/
             templateOne.setNextExecuteTime(nextExecuteTime);
             kJobMonitorDao.updateTemplateById(templateOne);
         } else {
@@ -467,9 +467,9 @@ public class JobService {
             kJobMonitor.setAddUser(userId);
             kJobMonitor.setMonitorSuccess(0);
             kJobMonitor.setMonitorFail(0);
-            StringBuilder runStatusBuilder = new StringBuilder();
+/*            StringBuilder runStatusBuilder = new StringBuilder();
             runStatusBuilder.append(new Date().getTime()).append(Constant.RUNSTATUS_SEPARATE);
-            kJobMonitor.setRunStatus(runStatusBuilder.toString());
+            kJobMonitor.setRunStatus(runStatusBuilder.toString());*/
             kJobMonitor.setMonitorStatus(1);
             kJobMonitor.setNextExecuteTime(nextExecuteTime);
             kJobMonitorDao.insert(kJobMonitor);
@@ -489,10 +489,10 @@ public class JobService {
         template.setMonitorJob(jobId);
         KJobMonitor templateOne = kJobMonitorDao.templateOne(template);
         templateOne.setMonitorStatus(2);
-        StringBuilder runStatusBuilder = new StringBuilder();
+/*        StringBuilder runStatusBuilder = new StringBuilder();
         runStatusBuilder.append(templateOne.getRunStatus())
                 .append(new Date().getTime());
-        templateOne.setRunStatus(runStatusBuilder.toString());
+        templateOne.setRunStatus(runStatusBuilder.toString());*/
         kJobMonitorDao.updateTemplateById(templateOne);
     }
 

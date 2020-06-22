@@ -65,12 +65,12 @@ public class KJobMonitor implements Comparable<KJobMonitor>{
 	public void setMonitorSuccess(Integer monitorSuccess){
 		this.monitorSuccess = monitorSuccess;
 	}
-	public String getRunStatus(){
+/*	public String getRunStatus(){
 		return  runStatus;
 	}
 	public void setRunStatus(String runStatus){
 		this.runStatus = runStatus;
-	}
+	}*/
 
 	public Date getLastExecuteTime() {
 		return lastExecuteTime;

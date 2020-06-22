@@ -1,11 +1,8 @@
 package com.zhaxd.common.kettle.repository;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.zhaxd.web.service.DataBaseRepositoryService;
+import com.zhaxd.common.toolkit.Constant;
+import com.zhaxd.core.dto.kettle.RepositoryTree;
+import com.zhaxd.core.model.KRepository;
 import org.apache.log4j.Logger;
 import org.pentaho.di.core.KettleEnvironment;
 import org.pentaho.di.core.database.DatabaseMeta;
@@ -16,9 +13,8 @@ import org.pentaho.di.repository.RepositoryElementMetaInterface;
 import org.pentaho.di.repository.kdr.KettleDatabaseRepository;
 import org.pentaho.di.repository.kdr.KettleDatabaseRepositoryMeta;
 
-import com.zhaxd.common.toolkit.Constant;
-import com.zhaxd.core.dto.kettle.RepositoryTree;
-import com.zhaxd.core.model.KRepository;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RepositoryUtil {
 

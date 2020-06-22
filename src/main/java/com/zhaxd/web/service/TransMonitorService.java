@@ -116,38 +116,4 @@ public class TransMonitorService {
         return allSuccess;
     }
 
-    /**
-     * @param uId 用户ID
-     * @return Map<String   ,   Object>
-     * @Title getTransLine
-     * @Description 获取7天内转换的折线图
-     */
-    public Map<String, Object> getTransLine(Integer uId) {
-        KTransMonitor template = new KTransMonitor();
-        template.setAddUser(uId);
-        List<KTransMonitor> kTransMonitorList = kTransMonitorDao.template(template);
-        HashMap<String, Object> resultMap = new HashMap<String, Object>();
-        List<Integer> resultList = new ArrayList<Integer>();
-        for (int i = 0; i < 7; i++) {
-            resultList.add(i, 0);
-        }
-        if (kTransMonitorList != null && !kTransMonitorList.isEmpty()) {
-            for (KTransMonitor KTransMonitor : kTransMonitorList) {
-                String runStatus = KTransMonitor.getRunStatus();
-                if (runStatus != null && runStatus.contains(",")) {
-                    String[] startList = runStatus.split(",");
-                    for (String startOnce : startList) {
-                        String[] startAndStopTime = startOnce.split(Constant.RUNSTATUS_SEPARATE);
-                        if (startAndStopTime.length != 2)
-                            continue;
-                        //得到一次任务的起始时间和结束时间的毫秒值
-                        resultList = CommonUtils.getEveryDayData(Long.parseLong(startAndStopTime[0]), Long.parseLong(startAndStopTime[1]), resultList);
-                    }
-                }
-            }
-        }
-        resultMap.put("name", "转换");
-        resultMap.put("data", resultList);
-        return resultMap;
-    }
 }
